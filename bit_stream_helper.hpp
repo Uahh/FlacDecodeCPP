@@ -22,8 +22,7 @@ using namespace std;
 class C_BIT_HELPER
 {
 public:
-    C_BIT_HELPER(){};
-        
+    C_BIT_HELPER() = default;
     int char2Int(char c);
     void debugCoutHexStream(string hex_stream);
     void debugCoutHexStream(char* hex_stream);

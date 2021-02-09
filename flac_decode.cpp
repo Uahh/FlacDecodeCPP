@@ -7,13 +7,13 @@
 
 #include "flac_decode.hpp"
 
-void C_FLAC::readFlacFile(string flac_file_path)
+void C_Flac::readFlacFile(string flac_file_path)
 {
     this->_str_flac_file_path = flac_file_path;
     return;
 }
 
-void C_FLAC::decodeFlacInfo(string hex_stream)
+void C_Flac::decodeFlacInfo(string hex_stream)
 {
     //采样数
     string temp;
@@ -117,7 +117,7 @@ void C_FLAC::decodeFlacInfo(string hex_stream)
         this->_int_bits_per_sample = -1;
 }
 
-void C_FLAC::decodeFlacPicture(string hex_stream)
+void C_Flac::decodeFlacPicture(string hex_stream)
 {
     
     string picture_type[] = { "Other", "32x32 pixels", "Other file icon", "Cover (front)", "Cover (back)", "Leaflet page", "Media (e.g. label side of CD)", "Lead artist/lead performer/soloist", "Artist/performer", "Conductor", "Band/Orchestra", "Composer", "Lyricist/text writer", "Recording Location", "During recording", "During performance", "Movie/video screen capture", "A bright coloured fish", "Illustration", "Band/artist logotype", "Publisher/Studio logotype"};
@@ -146,8 +146,7 @@ void C_FLAC::decodeFlacPicture(string hex_stream)
             20 - Publisher/Studio logotype
     */
     
-//    int p = 0;
-    C_FLAC_PICTURE* picture = new C_FLAC_PICTURE(hex_stream);
+    auto* picture = new C_Flac_Picture(hex_stream);
     string temp = { hex_stream[0], hex_stream[1], hex_stream[2], hex_stream[3] };
     int type = bh_bit_helper->charArray2Int(temp);
     picture->setPictureType(picture_type[type]);
@@ -194,13 +193,14 @@ void C_FLAC::decodeFlacPicture(string hex_stream)
     this->_vt_fp_picture.push_back(picture);
 }
 
-void C_FLAC::decodeVorbisComment(string hex_stream)
+void C_Flac::decodeVorbisComment(string hex_stream)
 {
     hex_stream += "~~~";
-    cout << hex_stream << endl;
+//    cout << hex_stream << endl;
 
-    string metadata[19] = {"TITLE=", "ALBUM=", "ALBUMARTIST=", "GENRE=", "GENRENUMBER=", "DATE=", "COMPOSER=", "DISCNUMBER=", "TRACKNUMBER=", "COPYRIGHT=", "ORGANIZATION=", "COMMENT=", "PERFORMER=", "MOOD=", "DISCTOTAL=", "DYNAMIC RANGE=", "CONDUCTOR=", "ISRC=", "Label=", };
-    for(int i = 0; i < 19; i++)
+    auto* meta = new C_Flac_Metadata();
+    string metadata[18] = {"TITLE=", "ALBUM=", "ALBUMARTIST=", "GENRE=", "GENRENUMBER=", "DATE=", "COMPOSER=", "DISCNUMBER=", "TRACKNUMBER=", "COPYRIGHT=", "ORGANIZATION=", "COMMENT=", "PERFORMER=", "DISCTOTAL=", "DYNAMIC RANGE=", "CONDUCTOR=", "ISRC=", "LABEL=", };
+    for(int i = 0; i < 18; i++)
     {
         int step = 5;
         unsigned long tag = hex_stream.find(metadata[i]);
@@ -213,11 +213,12 @@ void C_FLAC::decodeVorbisComment(string hex_stream)
             step += 5;
         }
         sub = sub.substr(0, sub.find("~~~"));
-        cout << metadata[i].substr(0, metadata[i].size() - 1) << ": " << sub << endl;
+        meta->seleteSetFunction(metadata[i].substr(0, metadata[i].size() - 1), sub);
     }
+    this->_fm_metadata = meta;
 }
 
-void C_FLAC::decodeFlacFile()
+void C_Flac::decodeFlacFile()
 {
     ifstream music_file(this->_str_flac_file_path, ios::in|ios::binary);
     music_file.seekg(0, ios::beg);
@@ -254,7 +255,6 @@ void C_FLAC::decodeFlacFile()
 
         music_file.read(header_byte, 1);
         bitset<8> header = bitset<8>(header_byte[0]);
-//        cout << '\n' << header.to_string() << endl;
         if(header.to_string()[0] == '1')
         {
             break_flag = true;
@@ -294,7 +294,6 @@ void C_FLAC::decodeFlacFile()
                  input_metadata_data += picture_data[i];
              }
 //            cout << "DataSize: " << input_metadata_data.size() << endl;
-//            ResolutionVorbisComment(input_metadata_data);
         }
         else if((int)header_byte[0] == 2)
         {
@@ -385,47 +384,47 @@ void C_FLAC::decodeFlacFile()
     music_file.close();
 }
 
-int C_FLAC::getMinBlockSize() const
+int C_Flac::getMinBlockSize() const
 {
     return this->_int_min_block_size;
 }
 
-int C_FLAC::getMaxBlockSize() const
+int C_Flac::getMaxBlockSize() const
 {
     return this->_int_max_block_size;
 }
 
-int C_FLAC::getMinFrameSize() const
+int C_Flac::getMinFrameSize() const
 {
     return this->_int_min_frame_size;
 }
 
-int C_FLAC::getMaxFrameSize() const
+int C_Flac::getMaxFrameSize() const
 {
     return this->_int_max_frame_size;
 }
 
-int C_FLAC::getSampleRate() const
+int C_Flac::getSampleRate() const
 {
     return this->_int_sample_rate;
 }
 
-int C_FLAC::getChannel() const
+int C_Flac::getChannel() const
 {
     return this->_int_channel;
 }
 
-int C_FLAC::getBitsPerSample() const
+int C_Flac::getBitsPerSample() const
 {
     return this->_int_bits_per_sample;
 }
 
-vector<C_FLAC_PICTURE*> C_FLAC::getAllPictures() const
+vector<C_Flac_Picture*> C_Flac::getAllPictures() const
 {
     return this->_vt_fp_picture;
 }
 
-C_FLAC_PICTURE* C_FLAC::getFrontPicture() const
+C_Flac_Picture* C_Flac::getFrontPicture() const
 {
     if(_vt_fp_picture.size() > 0)
         return this->_vt_fp_picture[0];
@@ -433,61 +432,72 @@ C_FLAC_PICTURE* C_FLAC::getFrontPicture() const
         return nullptr;
 }
 
-void C_FLAC_PICTURE::setPictureType(string val)
+void C_Flac_Picture::setPictureType(string val)
 {
     this->_str_picture_type = val;
 }
-void C_FLAC_PICTURE::setPictureTMiem(int val)
+
+void C_Flac_Picture::setPictureTMiem(int val)
 {
     this->_int_picture_miem = val;
 }
-void C_FLAC_PICTURE::setPictureWidth(int val)
+
+void C_Flac_Picture::setPictureWidth(int val)
 {
     this->_int_picture_width = val;
 }
-void C_FLAC_PICTURE::setPictureHeight(int val)
+
+void C_Flac_Picture::setPictureHeight(int val)
 {
     this->_int_picture_height = val;
 }
-void C_FLAC_PICTURE::setPictureBitsPerPixel(int val)
+
+void C_Flac_Picture::setPictureBitsPerPixel(int val)
 {
     this->_int_picture_bits_per_pixel = val;
 }
-void C_FLAC_PICTURE::setPictureSize(int val)
+
+void C_Flac_Picture::setPictureSize(int val)
 {
     this->_int_picture_size = val;
 }
-string C_FLAC_PICTURE::getPictureType() const
+
+string C_Flac_Picture::getPictureType() const
 {
     return this->_str_picture_type;
 }
-int C_FLAC_PICTURE::getPictureMiem() const
+
+int C_Flac_Picture::getPictureMiem() const
 {
     return this->_int_picture_miem;
 }
-int C_FLAC_PICTURE::getPictureWidth() const
+
+int C_Flac_Picture::getPictureWidth() const
 {
     return this->_int_picture_width;
 }
-int C_FLAC_PICTURE::getPictureHeight() const
+
+int C_Flac_Picture::getPictureHeight() const
 {
     return this->_int_picture_height;
 }
-int C_FLAC_PICTURE::getPictureBitsPerPixel() const
+
+int C_Flac_Picture::getPictureBitsPerPixel() const
 {
     return this->_int_picture_bits_per_pixel;
 }
-int C_FLAC_PICTURE::getPictureSize() const
+
+int C_Flac_Picture::getPictureSize() const
 {
     return this->_int_picture_size;
 }
 
-string C_FLAC_PICTURE::getPictureBlockStream() const
+string C_Flac_Picture::getPictureBlockStream() const
 {
     return this->_int_picture_block_stream;
 }
 
-void C_FLAC_PICTURE::savePicture(string path) const
+void C_Flac_Picture::savePicture(string path) const
 {
     ofstream outFile(path, ios::binary | ios::out | ios::trunc);
     string strm = getPictureBlockStream();
@@ -495,4 +505,260 @@ void C_FLAC_PICTURE::savePicture(string path) const
     {
         outFile.put(strm[i]);
     }
+}
+
+void C_Flac_Metadata::seleteSetFunction(string str, string sub)
+{
+    if (str == "TITLE")
+    {
+        setTitle(sub);
+    }
+    else if (str == "ALBUM")
+    {
+        setAlbum(sub);
+    }
+    else if (str == "ALBUMARTIST")
+    {
+        setAlbumArtist(str);
+    }
+    else if (str == "GENRE")
+    {
+        setGenre(sub);
+    }
+    else if (str == "GENRENUMBER")
+    {
+        setGenreNumber(sub);
+    }
+    else if (str == "DATE")
+    {
+        setDate(sub);
+    }
+    else if (str == "COMPOSER")
+    {
+        setComposer(sub);
+    }
+    else if (str == "DISCNUMBER")
+    {
+        setDiscNumber(sub);
+    }
+    else if (str == "TRACKNUMBER")
+    {
+        setTrackNumber(sub);
+    }
+    else if (str == "COPYRIGHT")
+    {
+        setCopyright(sub);
+    }
+    else if (str == "ORGANIZATION")
+    {
+        setOrganization(sub);
+    }
+    else if (str == "COMMENT")
+    {
+        setComment(sub);
+    }
+    else if (str == "PERFORMER")
+    {
+        setPerformer(sub);
+    }
+    else if (str == "DISCTOTAL")
+    {
+        setDisctotal(sub);
+    }
+    else if (str == "DYNAMIC RANGE")
+    {
+        setDyanmicRange(sub);
+    }
+    else if (str == "CONDUCTOR")
+    {
+        setConductor(sub);
+    }
+    else if (str == "ISRC")
+    {
+        setISRC(sub);
+    }
+    else if (str == "LABEL")
+    {
+        setLabel(sub);
+    }
+}
+
+void C_Flac_Metadata::setTitle(string str)
+{
+    this->_str_title = str;
+}
+
+void C_Flac_Metadata::setAlbum(string str)
+{
+    this->_str_album = str;
+}
+
+void C_Flac_Metadata::setAlbumArtist(string str)
+{
+    this->_str_album_artist = str;
+}
+
+void C_Flac_Metadata::setGenre(string str)
+{
+    this->_str_genre = str;
+}
+
+void C_Flac_Metadata::setGenreNumber(string str)
+{
+    this->_str_genre_number = str;
+}
+
+void C_Flac_Metadata::setDate(string str)
+{
+    this->_str_date = str;
+}
+
+void C_Flac_Metadata::setComposer(string str)
+{
+    this->_str_composer = str;
+}
+
+void C_Flac_Metadata::setDiscNumber(string str)
+{
+    this->_str_disc_number = str;
+}
+
+void C_Flac_Metadata::setTrackNumber(string str)
+{
+    this->_str_track_number = str;
+}
+
+void C_Flac_Metadata::setCopyright(string str)
+{
+    this->_str_copyright = str;
+}
+
+void C_Flac_Metadata::setOrganization(string str)
+{
+    this->_str_organization = str;
+}
+
+void C_Flac_Metadata::setComment(string str)
+{
+    this->_str_comment = str;
+}
+
+void C_Flac_Metadata::setPerformer(string str)
+{
+    this->_str_performer = str;
+}
+
+void C_Flac_Metadata::setDisctotal(string str)
+{
+    this->_str_disctotal = str;
+}
+
+void C_Flac_Metadata::setDyanmicRange(string str)
+{
+    this->_str_dyanmic_range = str;
+}
+
+void C_Flac_Metadata::setConductor(string str)
+{
+    this->_str_conductor = str;
+}
+
+void C_Flac_Metadata::setISRC(string str)
+{
+    this->_str_isrc = str;
+}
+
+void C_Flac_Metadata::setLabel(string str)
+{
+    this->_str_label = str;
+}
+
+string C_Flac_Metadata::getTitle() const
+{
+    return this->_str_title;
+}
+
+string C_Flac_Metadata::getAlbum() const
+{
+    return this->_str_album;
+}
+
+string C_Flac_Metadata::getAlbumArtist() const
+{
+    return this->_str_album_artist;
+}
+
+string C_Flac_Metadata::getGenre() const
+{
+    return this->_str_genre;
+}
+
+string C_Flac_Metadata::getGenreNumber() const
+{
+    return this->_str_genre_number;
+}
+
+string C_Flac_Metadata::getDate() const
+{
+    return this->_str_date;
+}
+
+string C_Flac_Metadata::getComposer() const
+{
+    return this->_str_composer;
+}
+
+string C_Flac_Metadata::getDiscNumber() const
+{
+    return this->_str_disc_number;
+}
+
+string C_Flac_Metadata::getTrackNumber() const
+{
+    return this->_str_track_number;
+}
+
+string C_Flac_Metadata::getCopyright() const
+{
+    return this->_str_copyright;
+}
+
+string C_Flac_Metadata::getOrganization() const
+{
+    return this->_str_organization;
+}
+
+string C_Flac_Metadata::getComment() const
+{
+    return this->_str_comment;
+}
+
+string C_Flac_Metadata::getPerformer() const
+{
+    return this->_str_performer;
+}
+
+string C_Flac_Metadata::getDisctotal() const
+{
+    return this->_str_disctotal;
+}
+
+string C_Flac_Metadata::getDyanmicRange() const
+{
+    return this->_str_dyanmic_range;
+}
+
+string C_Flac_Metadata::getConductor() const
+{
+    return this->_str_conductor;
+}
+
+string C_Flac_Metadata::getISRC() const
+{
+    return this->_str_isrc;
+}
+
+string C_Flac_Metadata::getLabel() const
+{
+    return this->_str_label;
 }
